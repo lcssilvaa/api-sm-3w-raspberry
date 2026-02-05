@@ -1,0 +1,113 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+    height: 100vh;
+    background-image: url("/images/sorter.jpeg");
+    background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.overlay {
+     position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1;
+}
+
+.login-container {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 380px;
+    padding: 20px;
+}
+
+.login-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 30px 25px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.logo-login {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.logo-login img {
+  max-width: 140px;
+  height: auto;
+}
+
+.login-card h2 {
+    text-align: center;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.login-card p {
+    text-align: center;
+    font-size: 14px;
+    color: #777;
+    margin-bottom: 25px;
+}
+
+.input-group {
+    margin-bottom: 18px;
+}
+
+.input-group label {
+    display: block;
+    font-size: 14px;
+    color: #444;
+    margin-bottom: 6px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    outline: none;
+}
+
+.input-group input:focus {
+    border-color: #ff5e00;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    background: #DB0934;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+button:hover {
+    background: #AB0528;
+}
+
+.error {
+    margin-top: 15px;
+    text-align: center;
+    color: #DB0934;
+    font-size: 14px;
+}

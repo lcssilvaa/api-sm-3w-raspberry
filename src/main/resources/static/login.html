@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Login | Medidor</title>
+
+    <link rel="icon" href="/images/icon.png" type="image/png">
+
+    <link rel="stylesheet" href="/css/login.css">
+</head>
+<body>
+
+<div class="overlay"></div>
+
+<div class="login-container">
+    <form class="login-card" onsubmit="login(event)">
+
+        <div class ="logo-login">
+            <img src="/images/logo-color.png" alt="Logo">
+        </div>
+
+        <div class="input-group">
+            <label for="usuario">Usuário</label>
+            <input type="text" id="usuario" placeholder="Digite seu usuário" required>
+        </div>
+
+        <div class="input-group">
+            <label for="password">Senha</label>
+            <input type="password" id="password" placeholder="Digite sua senha" required>
+        </div>
+
+        <button type="submit">Entrar</button>
+
+        <div class="error" id="error" style="display:none;">
+            Usuário ou senha inválidos
+        </div>
+    </form>
+</div>
+
+<script src="js/login.js"></script>
+</body>
+</html>

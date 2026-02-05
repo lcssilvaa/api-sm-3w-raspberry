@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard | Medidor</title>
+
+    <link rel="icon" href="/images/icon.png" type="image/png">
+
+    <link rel="stylesheet" href="/css/style.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header class="header">
+  <div class="logo">
+    <img src="/images/logo.png" alt="Logo">
+  </div>
+
+  <div class="user">
+    <span>Lucas</span>
+    <img src="/images/user.png" alt="Usuário">
+  </div>
+</header>
+
+<div class="container">
+    <h2>Dashboard – Medições</h2>   
+
+    <div class="filtros">
+
+<label>Início:</label>
+        <input type="datetime-local" id="dataInicio">
+        <label>Fim:</label>
+        <input type="datetime-local" id="dataFim">
+        <button class="btn btn-filtrar" onclick="filtrarDados()">Filtrar</button>
+
+        <label for="variavel">Variável:</label>
+        <select id="variavel">
+            <option value="pa">pa</option>
+            <option value="pb">pb</option>
+            <option value="pc">pc</option>
+            <option value="uarms">uarms</option>
+        </select>
+
+        <button class="btn btn-atualizar" onclick="atualizarGrafico()">Atualizar</button>
+    </div>
+
+    <canvas id="grafico"></canvas>
+</div>
+
+<script src="js/script.js"></script>
+</body>
+</html>
