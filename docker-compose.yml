@@ -15,6 +15,17 @@ services:
     ports:
       - "5432:5432"
 
+  postgres-zabbix:
+    image: postgres:16
+    container_name: postgres-zabbix
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB_ZABBIX}
+      POSTGRES_USER: ${POSTGRES_USER_ZABBIX}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_ZABBIX}
+    volumes:
+      - postgres_zabbix_data:/var/lib/postgresql/data
+
   nginx:
     build:
       context: .
@@ -39,6 +50,46 @@ services:
       JWT_SECRET: ${JWT_SECRET}
     expose:
       - "8080"
+
+  zabbix-server:
+    image: zabbix/zabbix-server-pgsql:alpine-7.0.5
+    container_name: zabbix-server
+    restart: always
+    environment:
+      DB_SERVER_HOST: postgres-zabbix
+      POSTGRES_DB: ${POSTGRES_DB_ZABBIX}
+      POSTGRES_USER: ${POSTGRES_USER_ZABBIX}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_ZABBIX}
+    depends_on:
+      - postgres-zabbix
+    ports:
+      - "10051:10051"
+
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-pgsql:alpine-7.0.5
+    container_name: zabbix-web
+    restart: always
+    environment:
+      DB_SERVER_HOST: postgres-zabbix
+      POSTGRES_DB: ${POSTGRES_DB_ZABBIX}
+      POSTGRES_USER: ${POSTGRES_USER_ZABBIX}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_ZABBIX}
+      ZBX_SERVER_HOST: zabbix-server
+      PHP_TZ: America/Sao_Paulo
+    ports:
+      - "8081:8080"
+    depends_on:
+      - zabbix-server
+
+  zabbix-agent:
+    image: zabbix/zabbix-agent:alpine-7.0.5
+    container_name: zabbix-agent
+    environment:
+      ZBX_HOSTNAME: ${ZABBIX_HOSTNAME}
+      ZBX_SERVER_HOST: ${ZABBIX_SERVERHOST}
+    depends_on:
+      - zabbix-server
+    restart: always
 
 volumes:
   postgres_data:
