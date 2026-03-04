@@ -1,4 +1,4 @@
 package com.aut.api.DTO;
 
-public record RegisterRequestDTO (String nome, String usuario, String password) {
+public record RegisterRequestDTO (String nome, String usuario, String password, String role) {
 }
