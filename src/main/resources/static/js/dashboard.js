@@ -10,11 +10,10 @@ if (!token) {
 
 async function carregarDados() {
   try {
-    const response = await fetch("/api/medicoes/listar", {
-      headers: {
-        "Authorization": "Bearer " + token
-      }
-    });
+    const response = await apiRequest("/api/medicoes/listar");
+
+    if (!response) return;
+
     dadosGlobais = await response.json();
     dadosOriginais = [...dadosGlobais];
     filtrarDados();
