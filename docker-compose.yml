@@ -93,3 +93,4 @@ services:
 
 volumes:
   postgres_data:
+  postgres_zabbix_data:
