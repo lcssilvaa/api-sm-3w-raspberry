@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.jks
+**/*.keystore
+**/*.log
+**/node_modules
+target
+.vscode
+.idea

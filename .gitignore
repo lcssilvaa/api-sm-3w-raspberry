@@ -33,3 +33,13 @@ build/
 .vscode/
 
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.log
+node_modules/
