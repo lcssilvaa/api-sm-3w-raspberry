@@ -1,0 +1,60 @@
+EXECUTAR NA RAIZ DO REPOSITORIO
+Requisitos: Node.js 22+, Java 21. Docker para os comandos de containers.
+
+PREVIA LOCAL (DADOS SIMULADOS)
+node scripts/preview-dashboard.cjs
+http://localhost:4173/dashboard
+Encerrar: Ctrl+C
+
+TESTES DO DASHBOARD (SEM BANCO)
+node --test src/test/js/dashboard-data.test.cjs
+
+BACKEND LOCAL - WINDOWS / POWERSHELL
+Definir no ambiente: SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME,
+SPRING_DATASOURCE_PASSWORD, JWT_SECRET. PostgreSQL com tabelas existentes.
+.\mvnw.cmd spring-boot:run
+http://localhost:8080/login
+
+TESTES DO BACKEND - WINDOWS (MESMO AMBIENTE E BANCO DE TESTES)
+.\mvnw.cmd test
+
+GERAR JAR - WINDOWS
+.\mvnw.cmd clean package -DskipTests
+java -jar target/api-0.0.1-SNAPSHOT.jar
+
+BACKEND LOCAL - LINUX / RASPBERRY
+Configurar as mesmas variaveis de ambiente e o banco.
+chmod +x mvnw
+./mvnw spring-boot:run
+./mvnw test
+./mvnw clean package -DskipTests
+java -jar target/api-0.0.1-SNAPSHOT.jar
+
+DOCKER - PREPARAR
+Configurar .env local com as variaveis de docker-compose.yml.
+O banco deve ter as tabelas existentes (ddl-auto=validate).
+docker compose config --quiet
+
+DOCKER - SUBIR APLICACAO E BANCO
+docker compose up -d --build postgres api nginx
+http://localhost/login
+No notebook: http://IP_DO_RASPBERRY/login
+
+DOCKER - SUBIR TODOS OS SERVICOS (INCLUI ZABBIX)
+docker compose up -d --build
+
+RASPBERRY - ATUALIZAR CODIGO E RECONSTRUIR API
+git pull --ff-only
+docker compose up -d --build --no-deps api
+
+DOCKER - STATUS / LOGS / REINICIAR / PARAR
+docker compose ps
+docker compose logs --tail=100 -f api
+docker compose restart api
+docker compose stop
+
+GIT - CONFERIR ANTES DE ENVIAR
+git status --short
+git diff --check
+git diff --cached --stat
+Nao versionar .env, senhas, tokens ou chaves privadas.
