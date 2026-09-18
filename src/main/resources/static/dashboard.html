@@ -2,52 +2,96 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard | Medidor</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#d90935">
+    <title>Energia | Dashboard</title>
     <link rel="icon" href="/images/icon.png" type="image/png">
-
     <link rel="stylesheet" href="/css/style.css">
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script defer src="/js/tokenexpiration.js"></script>
+    <script defer src="/js/dashboard-config.js"></script>
+    <script defer src="/js/dashboard-data.js"></script>
+    <script defer src="/js/dashboard.js"></script>
 </head>
 <body>
-<header class="header">
-    <div class="logo">
-        <img src="/images/logo.png" alt="Logo">
-    </div>
-
-    <div class="menu">
-        <button class="btn-logout" onclick="logout()">Sair</button>
-    </div>
-</header>
-
-<div class="container">
-    <h2>Dashboard – Medições</h2>
-
-    <div class="filtros">
-
-        <label>Início:</label>
-        <input type="datetime-local" id="dataInicio">
-        <label>Fim:</label>
-        <input type="datetime-local" id="dataFim">
-        <button class="btn btn-filtrar" onclick="filtrarDados()">Filtrar</button>
-
-        <label for="variavel">Variável:</label>
-        <select id="variavel">
-            <option value="pa">PA TESTE</option>
-            <option value="pb">pb</option>
-            <option value="pc">pc</option>
-            <option value="uarms">uarms TESTE</option>
-        </select>
-
-        <button class="btn btn-atualizar" onclick="atualizarGrafico()">Atualizar</button>
-    </div>
-
-    <canvas id="grafico"></canvas>
+<svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-13h-7l1-7Z"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18M6 15l5-6 4 3 6-8"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+    <symbol id="i-exit" viewBox="0 0 24 24"><path d="M9 4H4v16h5m0-8h12m-4-4 4 4-4 4"/></symbol>
+    <symbol id="i-meter" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M8 6h8v5H8zM9 16h.01M15 16h.01M9 19h6"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="17" r="2"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+</svg>
+<a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+<div class="app-shell">
+    <header class="topbar">
+        <div class="topbar-left">
+            <a class="brand" href="/dashboard" aria-label="Patrus — início"><img src="/images/logo.png" alt="Patrus"></a>
+        </div>
+        <div class="topbar-right">
+            <span id="statusConexao" class="status-pill" role="status"><span class="status-dot"></span>Carregando</span>
+            <div class="navigation-dropdown" id="navegacao">
+                <button id="btnMenu" class="menu-toggle" type="button" aria-label="Menu de navegação" title="Menu de navegação" aria-expanded="false" aria-controls="menuPrincipal">
+                    <img class="avatar" src="/images/logo-po.png" alt="" width="36" height="36">
+                    <svg class="icon menu-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+                </button>
+                <nav id="menuPrincipal" class="dropdown-panel" aria-label="Menu principal" hidden>
+                    <a class="nav-link active" href="#conteudo" aria-current="location"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg>Visão geral</a>
+                    <a class="nav-link" href="#medidores"><svg class="icon" aria-hidden="true"><use href="#i-meter"/></svg>Medidores<span class="nav-count" id="menuContagem">0</span></a>
+                    <a class="nav-link" href="#historico"><svg class="icon" aria-hidden="true"><use href="#i-chart"/></svg>Histórico de leituras</a>
+                    <div class="dropdown-divider"></div>
+                    <button id="btnSair" class="nav-link logout" type="button"><svg class="icon" aria-hidden="true"><use href="#i-exit"/></svg>Sair da conta</button>
+                </nav>
+            </div>
+        </div>
+    </header>
+    <main id="conteudo" class="main-content">
+        <section class="page-heading" aria-labelledby="tituloPagina">
+            <div><p class="eyebrow">PAINEL DE CONTROLE</p><h1 id="tituloPagina">Visão geral de energia<span class="heading-dot"></span></h1></div>
+            <div class="heading-actions"><span class="updated-at" id="ultimaAtualizacao">Buscando medições…</span><button class="button button-secondary" id="btnAtualizar" type="button"><svg class="icon"><use href="#i-refresh"/></svg>Atualizar dados</button></div>
+        </section>
+        <div id="mensagem" class="notice" role="status" aria-live="polite" hidden></div>
+        <noscript><div class="notice">Ative o JavaScript para carregar as medições.</div></noscript>
+        <section id="medidores" class="meters-section" aria-labelledby="tituloMedidores">
+            <div class="section-heading"><h2 id="tituloMedidores">Seus medidores <span class="count-label" id="contagemMedidores">—</span></h2></div>
+            <div class="meter-grid" id="listaMedidores" aria-busy="true"></div>
+        </section>
+        <section class="panel filter-panel" aria-labelledby="tituloFiltros">
+            <div class="filter-heading"><h2 id="tituloFiltros"><svg class="icon"><use href="#i-filter"/></svg>Filtros de visualização</h2><div class="period-presets" role="group" aria-label="Períodos rápidos"><button type="button" data-period="1" aria-pressed="true">Hoje</button><button type="button" data-period="7" aria-pressed="false">7 dias</button><button type="button" data-period="30" aria-pressed="false">30 dias</button></div></div>
+            <form id="formFiltros" class="filters">
+                <div class="field"><label for="medidor">Medidor</label><select id="medidor"><option value="all">Todos os medidores</option></select></div>
+                <div class="field"><label for="variavel">Variável</label><select id="variavel"></select></div>
+                <div class="field field-date"><label for="dataInicio">Data e hora inicial</label><input type="datetime-local" id="dataInicio" required></div>
+                <div class="field field-date"><label for="dataFim">Data e hora final</label><input type="datetime-local" id="dataFim" required></div>
+                <button class="button button-primary" type="submit">Aplicar filtros<svg class="icon"><use href="#i-arrow"/></svg></button>
+            </form>
+            <p class="filter-error" id="erroFiltro" role="alert" hidden></p>
+        </section>
+        <section class="stats-grid" aria-label="Resumo da variável no período selecionado">
+            <article class="stat-card"><div class="stat-label">Última leitura<svg class="icon"><use href="#i-bolt"/></svg></div><div class="stat-value" id="valorUltimo">—</div><p id="detalheUltimo">No período selecionado</p></article>
+            <article class="stat-card"><div class="stat-label">Média das leituras<svg class="icon"><use href="#i-chart"/></svg></div><div class="stat-value" id="valorMedia">—</div><p id="detalheMedia">No período selecionado</p></article>
+            <article class="stat-card"><div class="stat-label">Maior leitura<svg class="icon"><use href="#i-arrow"/></svg></div><div class="stat-value" id="valorMaximo">—</div><p id="detalheMaximo">No período selecionado</p></article>
+            <article class="stat-card"><div class="stat-label">Leituras válidas<svg class="icon"><use href="#i-clock"/></svg></div><div class="stat-value" id="valorContagem">—</div><p id="detalheContagem">Da variável selecionada</p></article>
+        </section>
+        <section class="panel chart-panel" aria-labelledby="tituloGrafico">
+            <div class="panel-heading"><div><p class="eyebrow">EVOLUÇÃO NO TEMPO</p><h2 id="tituloGrafico">Histórico de medições</h2><p id="resumoPeriodo" class="panel-description">Carregando período…</p></div><button class="button button-secondary button-small" id="btnExportar" type="button" disabled><svg class="icon"><use href="#i-download"/></svg>Exportar CSV</button></div>
+            <div class="chart-meta"><span id="nomeVariavel" class="variable-tag">—</span><div id="legendaGrafico" class="chart-legend" aria-label="Legenda dos medidores"></div></div>
+            <div class="chart-container" id="areaGrafico" aria-busy="true">
+                <canvas id="grafico" role="img" aria-label="Gráfico das leituras por medidor. Os registros mais recentes estão na tabela abaixo."></canvas>
+                <div class="empty-state" id="estadoGrafico" role="status"><span class="empty-icon"><svg class="icon"><use href="#i-chart"/></svg></span><h3 id="estadoTitulo">Carregando medições</h3><p id="estadoDescricao">Aguarde enquanto buscamos as leituras.</p></div>
+            </div>
+            <div class="chart-footer"><span><span class="small-dot"></span><span id="resumoGrafico">Aguardando dados</span></span><span>Horários no fuso local</span></div>
+        </section>
+        <section id="historico" class="panel readings-panel" aria-labelledby="tituloLeituras">
+            <div class="panel-heading"><div><h2 id="tituloLeituras">Últimas leituras</h2><p class="panel-description">Registros mais recentes do período selecionado.</p></div><span class="table-count" id="contagemTabela">0 registros</span></div>
+            <div class="table-scroll"><table><thead><tr><th scope="col">Medidor</th><th scope="col">Data e hora</th><th scope="col">Variável</th><th scope="col" class="numeric">Valor</th></tr></thead><tbody id="tabelaLeituras"><tr><td colspan="4" class="table-empty">Carregando leituras…</td></tr></tbody></table></div>
+        </section>
+    </main>
 </div>
-
-<script src="js/tokenexpiration.js"></script>
-<script src="js/dashboard.js"></script>
-
 </body>
 </html>
