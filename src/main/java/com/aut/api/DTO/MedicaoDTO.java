@@ -58,6 +58,15 @@ public class MedicaoDTO {
     private BigDecimal tpsd;
 
     private BigDecimal rssi_wifi;
+    private Integer rele;
+
+    public Integer getRele() {
+        return rele;
+    }
+
+    public void setRele(Integer rele) {
+        this.rele = rele;
+    }
 
     public String getId() {
         return id;

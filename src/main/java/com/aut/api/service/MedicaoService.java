@@ -65,6 +65,7 @@ public class MedicaoService {
         entity.setYubuc(dto.getYubuc());
         entity.setTpsd(dto.getTpsd());
         entity.setRssiWifi(dto.getRssi_wifi());
+        entity.setRele(dto.getRele());
 
         entity.setDataHora(OffsetDateTime.now());
 

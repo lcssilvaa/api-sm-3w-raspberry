@@ -67,9 +67,18 @@ public class MedicaoEntity {
 
     private BigDecimal tpsd;
     private BigDecimal rssiWifi;
+    private Integer rele;
 
     @Column(name = "data_hora")
     private OffsetDateTime dataHora;
+
+    public Integer getRele() {
+        return rele;
+    }
+
+    public void setRele(Integer rele) {
+        this.rele = rele;
+    }
 
     public OffsetDateTime getDataHora() {
         return dataHora;
