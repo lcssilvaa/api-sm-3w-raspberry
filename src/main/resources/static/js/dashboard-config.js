@@ -2,7 +2,8 @@ const DASHBOARD_CONFIG = {
   endpoint: "/api/medicoes/listar",
   meters: [
     { deviceId: 1, label: "Medidor CON", color: "#d90935" },
-    { deviceId: 2, label: "Medidor RIO", color: "#378baf" }
+    { deviceId: 2, label: "Medidor RIO", color: "#378baf" },
+    { deviceId: 3, label: "Tomada RIO", color: "#898989" }
   ],
 
   variables: [
@@ -56,5 +57,6 @@ const DASHBOARD_CONFIG = {
 
     { key: "tpsd", label: "Temperatura do equipamento", unit: "°C" },
     { key: "rssiWifi", label: "Intensidade do sinal Wi-Fi", unit: "dBm" },
+    { key: "rele", label: "Estado do relé", unit: "" },
   ]
 };
