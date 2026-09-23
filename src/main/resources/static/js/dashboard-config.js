@@ -1,5 +1,7 @@
 const DASHBOARD_CONFIG = {
   endpoint: "/api/medicoes/listar",
+  // Intervalos maiores que este limite ficam sem dados; ajuste à cadência de envio.
+  workHours: { maxGapMinutes: 5 },
   meters: [
     { deviceId: 1, label: "Medidor CON", color: "#d90935" },
     { deviceId: 2, label: "Medidor RIO", color: "#378baf" },

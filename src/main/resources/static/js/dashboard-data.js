@@ -77,6 +77,48 @@ const DashboardData = (() => {
     return '"' + text.replace(/"/g, '""') + '"';
   }
 
+  function workHours(rows, meters, period, defaults, now = Date.now()) {
+    const groups = groupByMeter(rows);
+    // O filtro inclui o último milissegundo. Durações usam [início, fim).
+    const end = Math.min(period.to + 1, now);
+    const duration = Math.max(0, end - period.from);
+    return meters.filter(meter => meter.deviceId !== null &&
+      (period.meterId === "all" || !period.meterId || period.meterId === meter.deviceId)).map(meter => {
+      const maxGapMinutes = numericValue(meter.workHours?.maxGapMinutes ?? defaults.maxGapMinutes);
+      if (maxGapMinutes === null || maxGapMinutes <= 0) {
+        throw new Error("O intervalo máximo entre leituras deve ser maior que zero.");
+      }
+      const ordered = (groups.get(meter.deviceId) || []).filter(row => row.timestamp <= now)
+        .slice().sort((a, b) => a.timestamp - b.timestamp);
+      // Uma leitura por instante: a última recebida prevalece, sem contar tempo duas vezes.
+      const samples = [...new Map(ordered.map(row => [row.timestamp, row])).values()];
+      // Se houver fases no histórico, exija todas elas ao usar a soma. Uma fase
+      // ausente não pode reduzir artificialmente a potência de um trifásico.
+      const phases = ["pa", "pb", "pc"].filter(key => samples.some(row => numericValue(row[key]) !== null));
+      const totals = { active: 0, off: 0, unknown: duration };
+      for (let index = 0; index < samples.length - 1; index++) {
+        const row = samples[index];
+        const next = samples[index + 1];
+        const elapsed = Math.min(next.timestamp, end) - Math.max(row.timestamp, period.from);
+        if (elapsed <= 0 || next.timestamp - row.timestamp > maxGapMinutes * 60000) continue;
+        let power = numericValue(row.pt);
+        if (power === null && phases.length) {
+          const values = phases.map(key => numericValue(row[key]));
+          if (values.every(value => value !== null && value >= 0)) power = values.reduce((sum, value) => sum + value, 0);
+        }
+        // Potência negativa indica fluxo reverso ou instalação a verificar.
+        // Não é evidência de equipamento desligado.
+        if (power === null || power < 0) continue;
+        if (!Number.isFinite(power)) continue;
+        const status = power === 0 ? "off" : "active";
+        totals[status] += elapsed;
+        totals.unknown -= elapsed;
+      }
+      return { ...meter, durationHours: duration / 3600000,
+        hours: Object.fromEntries(Object.entries(totals).map(([key, value]) => [key, value / 3600000])) };
+    });
+  }
+
   function toCsv(rows, meters, variable) {
     const names = new Map(meters.map(meter => [meter.deviceId, meter.label]));
     const lines = [["Medidor", "Device ID", "Data e hora (ISO 8601)", "Variável", "Valor", "Unidade"]];
@@ -87,7 +129,24 @@ const DashboardData = (() => {
     return "\uFEFF" + lines.map(line => line.map(csvCell).join(";")).join("\r\n");
   }
 
-  return { normalizeRows, numericValue, parsePeriod, filterRows, summarize, groupByMeter, buildSeries, toCsv };
+  function workHoursToCsv(results, period, now) {
+    const lines = [["Medidor", "Device ID", "Início do período (ISO 8601)", "Fim do período (ISO 8601)",
+      "Calculado até (ISO 8601)", "Em operação (h)", "Parado (h)", "Sem dados (h)"]];
+    const start = new Date(period.from).toISOString();
+    const end = new Date(period.to).toISOString();
+    const calculatedUntil = new Date(Math.min(period.to + 1, now)).toISOString();
+    const hours = value => Number(value.toFixed(6)).toString().replace(".", ",");
+    for (const meter of results) {
+      const knownHours = meter.hours.active + meter.hours.off;
+      lines.push([meter.label, meter.deviceId, start, end, calculatedUntil,
+        knownHours ? hours(meter.hours.active) : "", knownHours ? hours(meter.hours.off) : "",
+        hours(meter.hours.unknown)]);
+    }
+    return "\uFEFF" + lines.map(line => line.map(csvCell).join(";")).join("\r\n");
+  }
+
+  return { normalizeRows, numericValue, parsePeriod, filterRows, summarize, groupByMeter, buildSeries,
+    workHours, toCsv, workHoursToCsv };
 })();
 
 if (typeof module !== "undefined" && module.exports) module.exports = DashboardData;

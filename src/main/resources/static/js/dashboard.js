@@ -3,11 +3,11 @@
   "use strict";
 
   const state = {
-    rows: [], filtered: [], meters: DASHBOARD_CONFIG.meters.map(meter => ({
+    rows: [], filtered: [], workResults: [], meters: DASHBOARD_CONFIG.meters.map(meter => ({
       ...meter,
       deviceId: meter.deviceId == null ? null : String(meter.deviceId).trim()
     })),
-    filters: null, chart: null, loading: false, loaded: false
+    filters: null, chart: null, workChart: null, loading: false, loaded: false, loadedAt: null
   };
   const $ = id => document.getElementById(id);
   const numberFormat = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 3 });
@@ -18,6 +18,11 @@
   const meterName = id => state.meters.find(meter => meter.deviceId === id)?.label || id;
   const formatValue = value => value === null ? "—" : numberFormat.format(value);
   const withUnit = value => value === null ? "—" : `${formatValue(value)}${variable().unit ? " " + variable().unit : ""}`;
+  const workStates = [
+    { key: "active", label: "Em operação", color: "#06402b" },
+    { key: "off", label: "Parado", color: "#FF0000" },
+    { key: "unknown", label: "Sem dados", color: "#e2e5ea" }
+  ];
 
   function element(tag, className, content) {
     const node = document.createElement(tag);
@@ -107,11 +112,83 @@
     $("medidor").value = [...$("medidor").options].some(option => option.value === selected) ? selected : "all";
   }
 
+  function setWorkChartState(title = "", description = "") {
+    $("estadoHoras").hidden = !title;
+    $("graficoHoras").hidden = Boolean(title);
+    text("tituloEstadoHoras", title);
+    text("descricaoEstadoHoras", description);
+  }
+
+  function renderWorkHours() {
+    state.workResults = [];
+    $("btnExportarHoras").disabled = true;
+    if (state.workChart) { state.workChart.destroy(); state.workChart = null; }
+    const tbody = $("tabelaHoras");
+    tbody.replaceChildren();
+    text("periodoHoras", `${dateFormat.format(state.filters.from)} — ${dateFormat.format(state.filters.to)} · ${state.filters.meterId === "all" ? "Todos os medidores" : meterName(state.filters.meterId)}`);
+    let result;
+    try {
+      result = DashboardData.workHours(state.rows, state.meters, state.filters, DASHBOARD_CONFIG.workHours, state.loadedAt);
+      result.sort((a, b) => b.hours.active - a.hours.active || a.label.localeCompare(b.label, "pt-BR"));
+    } catch (error) {
+      setWorkChartState("Revise o intervalo de envio configurado", error.message);
+      return;
+    }
+    $("legendaHoras").replaceChildren();
+    for (const status of workStates) {
+      const label = element("span", "legend-item");
+      label.style.setProperty("--meter-color", status.color);
+      label.append(element("span", "legend-line"), document.createTextNode(status.label));
+      $("legendaHoras").append(label);
+    }
+    for (const meter of result) {
+      const row = element("tr");
+      const name = element("td", "", meter.label);
+      const knownHours = meter.hours.active + meter.hours.off;
+      row.append(name);
+      for (const status of workStates) row.append(element("td", "numeric",
+        status.key !== "unknown" && !knownHours ? "—" : formatValue(meter.hours[status.key])));
+      tbody.append(row);
+    }
+    if (!result.length || !result.some(meter => meter.durationHours > 0)) {
+      setWorkChartState("Sem intervalo para calcular", "Selecione um medidor e um período anterior ao horário da consulta.");
+      return;
+    }
+    state.workResults = result;
+    $("btnExportarHoras").disabled = false;
+    if (typeof Chart === "undefined") {
+      setWorkChartState("Não foi possível carregar o gráfico", "As durações calculadas estão disponíveis na tabela abaixo.");
+      return;
+    }
+    setWorkChartState();
+    $("areaHoras").style.height = `${Math.max(240, result.length * 60 + 80)}px`;
+    state.workChart = new Chart($("graficoHoras"), {
+      type: "bar",
+      data: {
+        labels: result.map(meter => meter.label),
+        datasets: workStates.map(status => ({ label: status.label, backgroundColor: status.color,
+          data: result.map(meter => meter.hours[status.key]), maxBarThickness: 38 }))
+      },
+      options: {
+        indexAxis: "y", responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          label: item => `${item.dataset.label}: ${formatValue(item.parsed.x)} h`
+        } } },
+        scales: {
+          x: { stacked: true, beginAtZero: true, title: { display: true, text: "Horas" },
+            ticks: { callback: value => formatValue(value) }, grid: { color: "#f0f1f5" } },
+          y: { stacked: true, grid: { display: false } }
+        }
+      }
+    });
+  }
+
   function renderMeters() {
     const groups = DashboardData.groupByMeter(state.rows);
     text("contagemMedidores", `${groups.size} com leituras`);
     text("menuContagem", groups.size);
     $("listaMedidores").replaceChildren();
+    $("listaMedidores").classList.toggle("many-meters", state.meters.length > 6);
     state.meters.forEach(meter => {
       const rows = groups.get(meter.deviceId) || [];
       const hasData = rows.length > 0;
@@ -262,6 +339,7 @@
     renderStats(summary);
     renderTable();
     renderChart(summary);
+    renderWorkHours();
   }
 
   async function loadData() {
@@ -269,6 +347,7 @@
     state.loading = true;
     $("btnAtualizar").disabled = true;
     $("areaGrafico").setAttribute("aria-busy", "true");
+    $("areaHoras").setAttribute("aria-busy", "true");
     $("listaMedidores").setAttribute("aria-busy", "true");
     setStatus("Atualizando");
     const controller = new AbortController();
@@ -278,6 +357,7 @@
       if (!response || !response.ok) throw new Error(`Falha na consulta (${response?.status || "sem resposta"}).`);
       const result = DashboardData.normalizeRows(await response.json());
       state.rows = result.rows;
+      state.loadedAt = Date.now();
       state.loaded = true;
       discoverMeters();
       render();
@@ -291,6 +371,8 @@
       if (!state.loaded) {
         text("ultimaAtualizacao", "Consulta não realizada");
         setChartState("Não foi possível buscar as medições", "Verifique sua conexão e tente atualizar os dados novamente.");
+        setWorkChartState("Não foi possível buscar as medições", "Atualize os dados para calcular as horas em operação.");
+        $("tabelaHoras").replaceChildren();
         const cell = element("td", "table-empty", "As leituras aparecerão após uma consulta bem-sucedida.");
         cell.colSpan = 4;
         const row = element("tr");
@@ -303,6 +385,7 @@
       state.loading = false;
       $("btnAtualizar").disabled = false;
       $("areaGrafico").setAttribute("aria-busy", "false");
+      $("areaHoras").setAttribute("aria-busy", "false");
       $("listaMedidores").setAttribute("aria-busy", "false");
     }
   }
@@ -310,10 +393,20 @@
   function exportCsv() {
     if (!state.filtered.length) return;
     const csv = DashboardData.toCsv(state.filtered, state.meters, variable());
+    downloadCsv(csv, `medicoes-${variable().key}-${localInput(new Date(state.filters.from)).slice(0, 10)}.csv`);
+  }
+
+  function exportWorkHoursCsv() {
+    if (!state.workResults.length) return;
+    const csv = DashboardData.workHoursToCsv(state.workResults, state.filters, state.loadedAt);
+    downloadCsv(csv, `horas-em-operacao-${localInput(new Date(state.filters.from)).slice(0, 10)}.csv`);
+  }
+
+  function downloadCsv(csv, filename) {
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
     const link = element("a");
     link.href = url;
-    link.download = `medicoes-${variable().key}-${localInput(new Date(state.filters.from)).slice(0, 10)}.csv`;
+    link.download = filename;
     document.body.append(link);
     link.click();
     link.remove();
@@ -372,6 +465,7 @@
     $("medidor").addEventListener("change", applyFilters);
     $("btnAtualizar").addEventListener("click", loadData);
     $("btnExportar").addEventListener("click", exportCsv);
+    $("btnExportarHoras").addEventListener("click", exportWorkHoursCsv);
     $("btnSair").addEventListener("click", () => {
       localStorage.removeItem("token");
       window.location.replace("/login");

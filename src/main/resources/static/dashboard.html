@@ -44,6 +44,7 @@
                     <a class="nav-link active" href="#conteudo" aria-current="location"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg>Visão geral</a>
                     <a class="nav-link" href="#medidores"><svg class="icon" aria-hidden="true"><use href="#i-meter"/></svg>Medidores<span class="nav-count" id="menuContagem">0</span></a>
                     <a class="nav-link" href="#historico"><svg class="icon" aria-hidden="true"><use href="#i-chart"/></svg>Histórico de leituras</a>
+                    <a class="nav-link" href="#horasTrabalhadas"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>Horas em operação</a>
                     <div class="dropdown-divider"></div>
                     <button id="btnSair" class="nav-link logout" type="button"><svg class="icon" aria-hidden="true"><use href="#i-exit"/></svg>Sair da conta</button>
                 </nav>
@@ -58,7 +59,7 @@
         <div id="mensagem" class="notice" role="status" aria-live="polite" hidden></div>
         <noscript><div class="notice">Ative o JavaScript para carregar as medições.</div></noscript>
         <section id="medidores" class="meters-section" aria-labelledby="tituloMedidores">
-            <div class="section-heading"><h2 id="tituloMedidores">Seus medidores <span class="count-label" id="contagemMedidores">—</span></h2></div>
+            <div class="section-heading"><h2 id="tituloMedidores">Medidores <span class="count-label" id="contagemMedidores">—</span></h2></div>
             <div class="meter-grid" id="listaMedidores" aria-busy="true"></div>
         </section>
         <section class="panel filter-panel" aria-labelledby="tituloFiltros">
@@ -86,6 +87,17 @@
                 <div class="empty-state" id="estadoGrafico" role="status"><span class="empty-icon"><svg class="icon"><use href="#i-chart"/></svg></span><h3 id="estadoTitulo">Carregando medições</h3><p id="estadoDescricao">Aguarde enquanto buscamos as leituras.</p></div>
             </div>
             <div class="chart-footer"><span><span class="small-dot"></span><span id="resumoGrafico">Aguardando dados</span></span><span>Horários no fuso local</span></div>
+        </section>
+        <section id="horasTrabalhadas" class="panel chart-panel work-panel" aria-labelledby="tituloHoras">
+            <div class="panel-heading"><div><p class="eyebrow">TEMPO LIGADO ESTIMADO</p><h2 id="tituloHoras">Horas em operação por equipamento</h2><p class="panel-description" id="periodoHoras">Mesmo período e medidores dos filtros acima.</p></div><span class="variable-tag">Potência ativa · W</span></div>
+            <div class="chart-meta"><button class="button button-secondary button-small" id="btnExportarHoras" type="button" aria-label="Exportar horas em operação em CSV" title="Exportar horas em operação em CSV" disabled><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Exportar CSV</button><div id="legendaHoras" class="chart-legend" aria-label="Estados estimados"></div></div>
+            <div class="work-chart-scroll" tabindex="0" role="region" aria-label="Comparação das horas em operação de todos os medidores">
+            <div class="chart-container" id="areaHoras" aria-busy="true">
+                <canvas id="graficoHoras" role="img" aria-label="Horas estimadas por estado e medidor. Valores disponíveis na tabela logo abaixo." hidden></canvas>
+                <div class="empty-state" id="estadoHoras" role="status"><h3 id="tituloEstadoHoras">Carregando medições</h3><p id="descricaoEstadoHoras">Aguarde enquanto calculamos o tempo em operação.</p></div>
+            </div>
+            </div>
+            <div class="table-scroll work-table" tabindex="0" role="region" aria-label="Tabela de horas em operação"><table><caption class="panel-description">Horas por estado de cada equipamento</caption><thead><tr><th scope="col">Medidor</th><th scope="col" class="numeric">Em operação (h)</th><th scope="col" class="numeric">Parado (h)</th><th scope="col" class="numeric">Sem dados (h)</th></tr></thead><tbody id="tabelaHoras"><tr><td colspan="4" class="table-empty">Aguardando medições…</td></tr></tbody></table></div>
         </section>
         <section id="historico" class="panel readings-panel" aria-labelledby="tituloLeituras">
             <div class="panel-heading"><div><h2 id="tituloLeituras">Últimas leituras</h2><p class="panel-description">Registros mais recentes do período selecionado.</p></div><span class="table-count" id="contagemTabela">0 registros</span></div>
