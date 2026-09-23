@@ -75,6 +75,70 @@ com um aviso até a próxima atualização.
 
 ## Verificação e execução
 
+### Horas em operação
+
+O painel **Horas em operação por equipamento** compara, em barras empilhadas,
+o tempo em operação, parado e sem dados de cada medidor.
+Usa o período e o medidor dos filtros principais, independentemente da
+variável escolhida no gráfico de medições. A tabela abaixo das barras
+mostra as mesmas durações em horas decimais. Todos os medidores são calculados
+juntos, sem configurar limites ou perfis individuais. O resultado é ordenado
+pelas horas em operação, da maior para a menor. Gráfico e tabela têm rolagem
+para acomodar os 60 medidores, assim como a lista de cards quando há mais de seis.
+O botão **Exportar CSV** deste painel exporta o resumo exibido, na mesma ordem
+e com os mesmos filtros: medidor, ID, período, fim efetivo do cálculo e horas
+em operação, parado e sem dados. Usa separador `;`, vírgula decimal e UTF-8
+com BOM. Estados sem nenhum intervalo válido ficam em branco, como os `—`
+da tabela. O CSV do histórico de medições continua disponível separadamente.
+Quando não existe nenhum intervalo classificável, os estados mostram `—`;
+o período transcorrido aparece como sem dados.
+
+A métrica é a potência ativa em W: prioriza `pt`, inclusive quando zero.
+Quando `pt` está ausente, soma as fases presentes no histórico do medidor
+(`pa`, `pb`, `pc`); todas essas fases precisam ter valores válidos na leitura.
+Assim, uma tomada que envia somente `pa` também funciona. Valores ausentes,
+inválidos ou negativos não são interpretados como parado. O cálculo não
+depende de tensão ou relé.
+
+A definição operacional adotada é **ligado = em operação**, independentemente
+de carga. A classificação segue uma regra única para todos os equipamentos:
+
+- **Em operação**: potência ativa maior que 0 W, inclusive baixa potência.
+- **Parado**: potência ativa igual a 0 W.
+- **Sem dados**: intervalos sem leituras suficientes ou com potência inválida.
+
+O resultado é uma estimativa do tempo ligado a partir da potência medida.
+Não distingue carga, produtividade ou espera: qualquer potência positiva conta
+como operação, conforme a definição escolhida. Ciclos entre leituras não são
+observados. Nenhum limite de potência precisa ser ajustado pelo usuário.
+
+A configuração técnica `workHours.maxGapMinutes`, em `dashboard-config.js`,
+limita o intervalo entre leituras (padrão: 5 minutos). Acima dele, todo o trecho
+fica sem dados. Ajuste à frequência de envio, globalmente ou por medidor:
+
+```js
+{ deviceId: 1, label: "Esteira", color: "#d90935",
+  workHours: { maxGapMinutes: 2 } }
+```
+
+Medidores descobertos automaticamente recebem o intervalo global.
+Os antigos limites e ajustes do `localStorage` não são mais utilizados.
+A conversão de escala da potência é desnecessária para distinguir zero de
+valores positivos; as medições originais são preservadas.
+
+O cálculo mantém o estado da leitura inicial até a próxima amostra do mesmo
+medidor, respeitando o intervalo máximo e recortando nas bordas do filtro.
+Pode usar uma leitura anterior ao início do filtro para cobrir essa borda.
+Não projeta o estado da última leitura: o tempo anterior à primeira amostra,
+posterior à última e as lacunas ficam sem dados. O fim nunca ultrapassa o
+horário da consulta; horas futuras não entram no gráfico. Timestamps
+duplicados contam uma única vez, prevalecendo o último registro da resposta.
+Nenhuma alteração no banco ou endpoint é necessária.
+
+Referência sobre a métrica: [potência real/ativa no glossário da Fluke](https://www.fluke.com/en-us/learn/blog/electrical/electrical-glossary).
+
+### Prévia e testes
+
 Para visualizar no notebook sem banco, Java ou acesso ao Raspberry, execute
 na raiz do repositório (requer apenas Node.js):
 
@@ -83,12 +147,16 @@ node scripts/preview-dashboard.cjs
 ```
 
 Abra `http://localhost:4173/dashboard`. O aviso no topo identifica os dados
-como simulados e permite alternar entre um e dois medidores. A prévia gera
+como simulados e permite alternar entre 1, 2 e 60 medidores. A prévia gera
 sete dias de leituras para testar os filtros, o gráfico e a exportação.
-Somente `pa`, `pb`, `pc` e `uarms` possuem valores simulados; as demais
+Somente `pa`, `pb`, `pc`, `pt` e `uarms` possuem valores simulados; as demais
 variáveis exibem o estado sem valores. Os IDs de demonstração são aplicados
 somente nessa prévia, preservando os IDs reais no arquivo de configuração.
 Alterações nos arquivos do dashboard aparecem ao recarregar a página.
+Acesse `http://localhost:4173/dashboard?medidores=60` para testar a frota completa.
+A prévia envia amostras a cada cinco minutos, com potência zero, baixa e alta,
+além de uma lacuna diária para testar horas sem dados. Baixa e alta potência
+contam igualmente como operação.
 O gráfico precisa de acesso à internet para carregar o Chart.js pelo CDN.
 Encerre com `Ctrl+C` no terminal. O servidor escuta apenas no próprio notebook
 e não altera os arquivos de produção nem acessa o Raspberry.
@@ -96,7 +164,7 @@ e não altera os arquivos de produção nem acessa o Raspberry.
 Os testes de transformação não precisam de banco nem de dependências npm:
 
 ```sh
-node --test src/test/js/dashboard-data.test.cjs
+node --test src/test/js/dashboard-data.test.cjs src/test/js/dashboard-work-hours.test.cjs
 ```
 
 Os arquivos estáticos são servidos pela aplicação Spring Boot. Para atualizar
