@@ -130,3 +130,20 @@ test("CSV de horas mantém estados sem dados em branco e protege identificadores
   assert.ok(csv.includes('"2026-09-19T00:00:00.000Z"'));
   assert.ok(csv.endsWith('"";"";"1"'));
 });
+
+test("horas e CSV com seleção de dois ou três medidores preservam as bordas do período", () => {
+  const meters = ["A", "B", "C", "D"].map(deviceId => ({ deviceId, label: deviceId }));
+  const rows = meters.flatMap(meter => [sample(-10, 100, meter.deviceId), sample(10, 0, meter.deviceId), sample(30, 0, meter.deviceId)]);
+  for (const meterIds of [["A", "C"], ["A", "B", "D"]]) {
+    const period = { from: at(0), to: at(20) - 1, meterIds };
+    const result = calculate(rows, { meters, period });
+    assert.deepEqual(result.map(meter => meter.deviceId), meterIds);
+    result.forEach(meter => expectHours(meter.hours, { active: 1 / 6, off: 1 / 6 }));
+    const csv = data.workHoursToCsv(result, period, at(180));
+    assert.equal(csv.split("\r\n").length, meterIds.length + 1);
+    meters.filter(meter => !meterIds.includes(meter.deviceId)).forEach(meter =>
+      assert.ok(!csv.includes(`"${meter.deviceId}"`)));
+  }
+  assert.deepEqual(calculate(rows, { meters, period: { meterIds: [] } }), []);
+  assert.equal(calculate(rows, { meters, period: { meterIds: null } }).length, 4);
+});

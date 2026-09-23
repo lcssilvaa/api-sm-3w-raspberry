@@ -65,7 +65,19 @@
         <section class="panel filter-panel" aria-labelledby="tituloFiltros">
             <div class="filter-heading"><h2 id="tituloFiltros"><svg class="icon"><use href="#i-filter"/></svg>Filtros de visualização</h2><div class="period-presets" role="group" aria-label="Períodos rápidos"><button type="button" data-period="1" aria-pressed="true">Hoje</button><button type="button" data-period="7" aria-pressed="false">7 dias</button><button type="button" data-period="30" aria-pressed="false">30 dias</button></div></div>
             <form id="formFiltros" class="filters">
-                <div class="field"><label for="medidor">Medidor</label><select id="medidor"><option value="all">Todos os medidores</option></select></div>
+                <div class="field">
+                    <span class="field-label" id="rotuloMedidores">Medidores</span>
+                    <details class="meter-picker" id="seletorMedidores">
+                        <summary aria-labelledby="rotuloMedidores resumoSelecao"><span id="resumoSelecao">Todos os medidores</span><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+                        <div class="meter-picker-panel">
+                            <label for="buscaMedidores">Buscar por nome ou ID</label>
+                            <input id="buscaMedidores" type="search" placeholder="Buscar medidor…" autocomplete="off">
+                            <div class="meter-picker-actions"><button class="meter-picker-action" id="selecionarTodos" type="button">Selecionar todos</button><button class="meter-picker-action" id="limparMedidores" type="button">Limpar seleção</button></div>
+                            <div class="meter-picker-list" id="opcoesMedidores" role="group" aria-labelledby="rotuloMedidores"></div>
+                            <p class="meter-picker-hint" id="semResultadoMedidores" role="status" hidden>Nenhum medidor encontrado.</p>
+                        </div>
+                    </details>
+                </div>
                 <div class="field"><label for="variavel">Variável</label><select id="variavel"></select></div>
                 <div class="field field-date"><label for="dataInicio">Data e hora inicial</label><input type="datetime-local" id="dataInicio" required></div>
                 <div class="field field-date"><label for="dataFim">Data e hora final</label><input type="datetime-local" id="dataFim" required></div>

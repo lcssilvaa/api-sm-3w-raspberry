@@ -7,7 +7,7 @@
       ...meter,
       deviceId: meter.deviceId == null ? null : String(meter.deviceId).trim()
     })),
-    filters: null, chart: null, workChart: null, loading: false, loaded: false, loadedAt: null
+    selectedMeterIds: null, filters: null, chart: null, workChart: null, loading: false, loaded: false, loadedAt: null
   };
   const $ = id => document.getElementById(id);
   const numberFormat = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 3 });
@@ -16,6 +16,8 @@
   const text = (id, value) => { $(id).textContent = value; };
   const variable = () => DASHBOARD_CONFIG.variables.find(item => item.key === state.filters.variable);
   const meterName = id => state.meters.find(meter => meter.deviceId === id)?.label || id;
+  const selectionLabel = ids => ids === null ? "Todos os medidores" : !ids.length ? "Nenhum medidor selecionado"
+    : ids.length === 1 ? meterName(ids[0]) : `${ids.length} medidores selecionados`;
   const formatValue = value => value === null ? "—" : numberFormat.format(value);
   const withUnit = value => value === null ? "—" : `${formatValue(value)}${variable().unit ? " " + variable().unit : ""}`;
   const workStates = [
@@ -81,7 +83,7 @@
   function applyFilters() {
     try {
       const period = DashboardData.parsePeriod($("dataInicio").value, $("dataFim").value);
-      state.filters = { ...period, meterId: $("medidor").value, variable: $("variavel").value };
+      state.filters = { ...period, meterIds: state.selectedMeterIds === null ? null : [...state.selectedMeterIds], variable: $("variavel").value };
       $("erroFiltro").hidden = true;
       $("dataInicio").removeAttribute("aria-invalid");
       $("dataFim").removeAttribute("aria-invalid");
@@ -102,14 +104,66 @@
       if (available) available.deviceId = id;
       else state.meters.push({ deviceId: id, label: `Medidor ${String(state.meters.length + 1).padStart(2, "0")}`, color: "#8770ad" });
     }
-    const selected = $("medidor").value;
-    $("medidor").replaceChildren(new Option("Todos os medidores", "all"));
-    state.meters.forEach((meter, index) => {
-      const option = new Option(meter.label + (meter.deviceId === null ? " · aguardando" : ""), meter.deviceId ?? `pending-${index}`);
-      option.disabled = meter.deviceId === null;
-      $("medidor").append(option);
+    $("opcoesMedidores").replaceChildren();
+    state.meters.filter(meter => meter.deviceId !== null).forEach(meter => {
+      const option = element("label", "meter-option");
+      const checkbox = element("input");
+      checkbox.type = "checkbox";
+      checkbox.value = meter.deviceId;
+      const label = element("span", "meter-option-label");
+      label.append(element("strong", "", meter.label), element("small", "", `ID · ${meter.deviceId}`));
+      option.append(checkbox, label);
+      checkbox.addEventListener("change", () => toggleMeter(meter.deviceId, checkbox.checked));
+      $("opcoesMedidores").append(option);
     });
-    $("medidor").value = [...$("medidor").options].some(option => option.value === selected) ? selected : "all";
+    syncMeterSelection();
+    searchMeters();
+  }
+
+  function syncMeterSelection() {
+    text("resumoSelecao", selectionLabel(state.selectedMeterIds));
+    $("opcoesMedidores").querySelectorAll("input").forEach(checkbox => {
+      checkbox.checked = state.selectedMeterIds === null || state.selectedMeterIds.includes(checkbox.value);
+    });
+  }
+
+  function setMeterSelection(ids) {
+    state.selectedMeterIds = ids;
+    syncMeterSelection();
+    applyFilters();
+  }
+
+  function toggleMeter(id, checked) {
+    const selected = new Set(state.selectedMeterIds ?? state.meters.filter(meter => meter.deviceId !== null).map(meter => meter.deviceId));
+    if (checked) selected.add(id);
+    else selected.delete(id);
+    setMeterSelection([...selected]);
+  }
+
+  function searchMeters() {
+    const query = $("buscaMedidores").value.trim().toLocaleLowerCase("pt-BR");
+    let visible = 0;
+    $("opcoesMedidores").querySelectorAll("label").forEach(option => {
+      option.hidden = !option.textContent.toLocaleLowerCase("pt-BR").includes(query);
+      if (!option.hidden) visible++;
+    });
+    $("semResultadoMedidores").hidden = visible > 0;
+  }
+
+  function initializeMeterPicker() {
+    const picker = $("seletorMedidores");
+    const close = () => { picker.open = false; };
+    $("selecionarTodos").addEventListener("click", () => setMeterSelection(null));
+    $("limparMedidores").addEventListener("click", () => setMeterSelection([]));
+    $("buscaMedidores").addEventListener("input", searchMeters);
+    $("buscaMedidores").addEventListener("keydown", event => {
+      if (event.key === "Enter") event.preventDefault();
+    });
+    document.addEventListener("click", event => { if (!picker.contains(event.target)) close(); });
+    document.addEventListener("focusin", event => { if (!picker.contains(event.target)) close(); });
+    picker.addEventListener("keydown", event => {
+      if (event.key === "Escape") { close(); picker.querySelector("summary").focus(); }
+    });
   }
 
   function setWorkChartState(title = "", description = "") {
@@ -125,7 +179,7 @@
     if (state.workChart) { state.workChart.destroy(); state.workChart = null; }
     const tbody = $("tabelaHoras");
     tbody.replaceChildren();
-    text("periodoHoras", `${dateFormat.format(state.filters.from)} — ${dateFormat.format(state.filters.to)} · ${state.filters.meterId === "all" ? "Todos os medidores" : meterName(state.filters.meterId)}`);
+    text("periodoHoras", `${dateFormat.format(state.filters.from)} — ${dateFormat.format(state.filters.to)} · ${selectionLabel(state.filters.meterIds)}`);
     let result;
     try {
       result = DashboardData.workHours(state.rows, state.meters, state.filters, DASHBOARD_CONFIG.workHours, state.loadedAt);
@@ -151,7 +205,8 @@
       tbody.append(row);
     }
     if (!result.length || !result.some(meter => meter.durationHours > 0)) {
-      setWorkChartState("Sem intervalo para calcular", "Selecione um medidor e um período anterior ao horário da consulta.");
+      setWorkChartState(state.filters.meterIds?.length === 0 ? "Nenhum medidor selecionado" : "Sem intervalo para calcular",
+        "Selecione os medidores para comparar e um período anterior ao horário da consulta.");
       return;
     }
     state.workResults = result;
@@ -192,9 +247,10 @@
     state.meters.forEach(meter => {
       const rows = groups.get(meter.deviceId) || [];
       const hasData = rows.length > 0;
-      const selected = hasData && (state.filters?.meterId === "all" || state.filters?.meterId === meter.deviceId);
+      const selected = hasData && (state.filters?.meterIds == null || state.filters.meterIds.includes(meter.deviceId));
       const card = element("button", `meter-card${selected ? " selected" : ""}`);
       card.type = "button";
+      card.dataset.deviceId = meter.deviceId;
       card.disabled = !hasData;
       card.style.setProperty("--meter-color", meter.color);
       card.setAttribute("aria-pressed", String(selected));
@@ -209,8 +265,8 @@
       card.append(meterIcon, info);
       if (hasData) card.append(icon("arrow"));
       card.addEventListener("click", () => {
-        $("medidor").value = state.filters.meterId === meter.deviceId ? "all" : meter.deviceId;
-        applyFilters();
+        toggleMeter(meter.deviceId, !selected);
+        [...$("listaMedidores").children].find(item => item.dataset.deviceId === meter.deviceId)?.focus({ preventScroll: true });
       });
       $("listaMedidores").append(card);
     });
@@ -267,6 +323,10 @@
       state.chart = null;
     }
     if (!summary.count) {
+      if (state.filters.meterIds?.length === 0) {
+        setChartState("Nenhum medidor selecionado", "Marque os medidores que deseja comparar no filtro acima.");
+        return;
+      }
       setChartState(state.filtered.length ? "Sem valores para esta variável" : "Nenhuma leitura neste período",
         state.filtered.length ? "Selecione outra variável para visualizar as medições disponíveis." : "Experimente outro período ou selecione todos os medidores.");
       return;
@@ -333,7 +393,7 @@
     const summary = DashboardData.summarize(state.filtered, variable().key);
     text("nomeVariavel", `${variable().label}${variable().unit ? ` (${variable().unit})` : ""}`);
     text("resumoPeriodo", `${dateFormat.format(state.filters.from)} — ${dateFormat.format(state.filters.to)}`);
-    text("resumoGrafico", `${numberFormat.format(summary.count)} leituras válidas · ${state.filters.meterId === "all" ? "Todos os medidores" : meterName(state.filters.meterId)}`);
+    text("resumoGrafico", `${numberFormat.format(summary.count)} leituras válidas · ${selectionLabel(state.filters.meterIds)}`);
     $("btnExportar").disabled = !state.filtered.length;
     renderMeters();
     renderStats(summary);
@@ -457,12 +517,12 @@
       return;
     }
     initializeMenu();
+    initializeMeterPicker();
     for (const item of DASHBOARD_CONFIG.variables) $("variavel").append(new Option(item.label, item.key));
     selectPeriod(1);
     renderMeters();
     $("formFiltros").addEventListener("submit", event => { event.preventDefault(); applyFilters(); });
     $("variavel").addEventListener("change", applyFilters);
-    $("medidor").addEventListener("change", applyFilters);
     $("btnAtualizar").addEventListener("click", loadData);
     $("btnExportar").addEventListener("click", exportCsv);
     $("btnExportarHoras").addEventListener("click", exportWorkHoursCsv);

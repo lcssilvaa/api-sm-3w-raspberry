@@ -55,8 +55,17 @@ desconsiderados e sinalizados no painel.
 Os filtros usam o fuso local do navegador e incluem todos os segundos do
 minuto final escolhido. Hoje, 7 dias e 30 dias são períodos de calendário
 que terminam no fim do dia atual. Alterações manuais nas datas exigem
-**Aplicar filtros**; trocar a variável ou o medidor também aplica os campos.
+**Aplicar filtros**; trocar a variável ou a seleção de medidores também aplica os campos.
 **Atualizar dados** refaz a consulta mantendo os filtros já aplicados.
+
+O filtro **Medidores** permite marcar vários equipamentos por caixas de seleção.
+Para comparar só dois ou três, abra o filtro, clique em **Limpar seleção** e
+marque os desejados. A busca localiza por nome ou ID sem alterar a seleção.
+**Selecionar todos** inclui todos os medidores, mesmo quando a busca está ativa;
+**Limpar seleção** desmarca todos. Os cards também marcam ou desmarcam um
+medidor sem substituir os demais. A seleção vale para ambos os gráficos,
+indicadores, tabelas e exportações CSV. Sem nenhuma seleção, os gráficos
+pedem que se escolha um medidor e os botões de exportação ficam desabilitados.
 
 Os indicadores representam a variável e os medidores selecionados: última
 leitura válida, média por amostra, maior leitura e quantidade de leituras

@@ -90,3 +90,28 @@ test("CSV preserva os registros filtrados, caracteres e valores ausentes", () =>
   assert.ok(csv.includes('"\'=ID"'));
   assert.ok(csv.endsWith('"pa";"";""'));
 });
+
+test("seleção múltipla filtra séries, indicadores e CSV sem incluir outros medidores", () => {
+  const rows = normalize(["A", "B", "C", "D"].map((id, index) =>
+    reading(id, "2026-09-18T12:00:00Z", (index + 1) * 10)));
+  const period = data.parsePeriod("2026-09-18T12:00Z", "2026-09-18T12:00Z");
+  const meters = ["A", "B", "C", "D"].map(deviceId => ({ deviceId, label: deviceId }));
+  for (const meterIds of [["A", "C"], ["A", "B", "D"]]) {
+    const filtered = data.filterRows(rows, { ...period, meterIds });
+    assert.deepEqual(filtered.map(row => row.deviceId), meterIds);
+    assert.equal(data.summarize(filtered, "pa").count, meterIds.length);
+    assert.deepEqual(data.buildSeries(filtered, meters, "pa").map(series => series.deviceId), meterIds);
+    const csv = data.toCsv(filtered, meters, { key: "pa", unit: "W" });
+    assert.equal(csv.split("\r\n").length, meterIds.length + 1);
+    meters.filter(meter => !meterIds.includes(meter.deviceId)).forEach(meter =>
+      assert.ok(!csv.includes(`"${meter.deviceId}"`)));
+  }
+});
+
+test("seleção vazia não volta a todos; null inclui todos e IDs numéricos são aceitos", () => {
+  const rows = normalize([reading("1", "2026-09-18T12:00:00Z", 10), reading("2", "2026-09-18T12:00:00Z", 20)]);
+  const period = data.parsePeriod("2026-09-18T12:00Z", "2026-09-18T12:00Z");
+  assert.deepEqual(data.filterRows(rows, { ...period, meterIds: [] }), []);
+  assert.equal(data.filterRows(rows, { ...period, meterIds: null }).length, 2);
+  assert.deepEqual(data.filterRows(rows, { ...period, meterIds: [2, 2] }).map(row => row.deviceId), ["2"]);
+});

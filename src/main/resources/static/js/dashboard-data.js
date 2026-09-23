@@ -33,9 +33,16 @@ const DashboardData = (() => {
     return { from, to: to + 59999 };
   }
 
-  function filterRows(rows, { from, to, meterId = "all" }) {
+  function meterSelection({ meterIds, meterId = "all" }) {
+    if (Array.isArray(meterIds)) return new Set(meterIds.map(String));
+    return meterId === "all" ? null : new Set([String(meterId)]);
+  }
+
+  function filterRows(rows, filters) {
+    const { from, to } = filters;
+    const selected = meterSelection(filters);
     return rows.filter(row => row.timestamp >= from && row.timestamp <= to &&
-      (meterId === "all" || row.deviceId === meterId));
+      (selected === null || selected.has(row.deviceId)));
   }
 
   function summarize(rows, variable) {
@@ -79,11 +86,12 @@ const DashboardData = (() => {
 
   function workHours(rows, meters, period, defaults, now = Date.now()) {
     const groups = groupByMeter(rows);
+    const selected = meterSelection(period);
     // O filtro inclui o último milissegundo. Durações usam [início, fim).
     const end = Math.min(period.to + 1, now);
     const duration = Math.max(0, end - period.from);
     return meters.filter(meter => meter.deviceId !== null &&
-      (period.meterId === "all" || !period.meterId || period.meterId === meter.deviceId)).map(meter => {
+      (selected === null || selected.has(meter.deviceId))).map(meter => {
       const maxGapMinutes = numericValue(meter.workHours?.maxGapMinutes ?? defaults.maxGapMinutes);
       if (maxGapMinutes === null || maxGapMinutes <= 0) {
         throw new Error("O intervalo máximo entre leituras deve ser maior que zero.");
