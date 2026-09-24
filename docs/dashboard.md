@@ -102,24 +102,20 @@ da tabela. O CSV do histórico de medições continua disponível separadamente.
 Quando não existe nenhum intervalo classificável, os estados mostram `—`;
 o período transcorrido aparece como sem dados.
 
-A métrica é a potência ativa em W: prioriza `pt`, inclusive quando zero.
-Quando `pt` está ausente, soma as fases presentes no histórico do medidor
-(`pa`, `pb`, `pc`); todas essas fases precisam ter valores válidos na leitura.
-Assim, uma tomada que envia somente `pa` também funciona. Valores ausentes,
-inválidos ou negativos não são interpretados como parado. O cálculo não
-depende de tensão ou relé.
+A métrica é somente a potência ativa da fase A (`pa`), em W.
+O cálculo não utiliza `pt`, `pb`, `pc`, tensão ou relé. Valores de `pa`
+ausentes, inválidos ou negativos deixam o intervalo sem dados, mesmo quando
+há valores disponíveis no total ou nas outras fases.
 
-A definição operacional adotada é **ligado = em operação**, independentemente
-de carga. A classificação segue uma regra única para todos os equipamentos:
+A classificação segue uma regra única para todos os equipamentos:
 
-- **Em operação**: potência ativa maior que 0 W, inclusive baixa potência.
-- **Parado**: potência ativa igual a 0 W.
+- **Em operação**: PA maior ou igual a 20 W.
+- **Parado (fora de operação/sem uso)**: PA de 0 W até abaixo de 20 W.
 - **Sem dados**: intervalos sem leituras suficientes ou com potência inválida.
 
-O resultado é uma estimativa do tempo ligado a partir da potência medida.
-Não distingue carga, produtividade ou espera: qualquer potência positiva conta
-como operação, conforme a definição escolhida. Ciclos entre leituras não são
-observados. Nenhum limite de potência precisa ser ajustado pelo usuário.
+O resultado é uma estimativa do tempo em operação a partir da PA medida,
+com limite fixo de 20 W. Não mede produtividade, e ciclos entre leituras não
+são observados.
 
 A configuração técnica `workHours.maxGapMinutes`, em `dashboard-config.js`,
 limita o intervalo entre leituras (padrão: 5 minutos). Acima dele, todo o trecho
@@ -132,8 +128,7 @@ fica sem dados. Ajuste à frequência de envio, globalmente ou por medidor:
 
 Medidores descobertos automaticamente recebem o intervalo global.
 Os antigos limites e ajustes do `localStorage` não são mais utilizados.
-A conversão de escala da potência é desnecessária para distinguir zero de
-valores positivos; as medições originais são preservadas.
+As leituras de PA devem estar em W; as medições originais são preservadas.
 
 O cálculo mantém o estado da leitura inicial até a próxima amostra do mesmo
 medidor, respeitando o intervalo máximo e recortando nas bordas do filtro.
@@ -164,8 +159,8 @@ somente nessa prévia, preservando os IDs reais no arquivo de configuração.
 Alterações nos arquivos do dashboard aparecem ao recarregar a página.
 Acesse `http://localhost:4173/dashboard?medidores=60` para testar a frota completa.
 A prévia envia amostras a cada cinco minutos, com potência zero, baixa e alta,
-além de uma lacuna diária para testar horas sem dados. Baixa e alta potência
-contam igualmente como operação.
+além de uma lacuna diária para testar horas sem dados. As amostras com PA
+abaixo de 20 W contam como parado; a partir de 20 W, como operação.
 O gráfico precisa de acesso à internet para carregar o Chart.js pelo CDN.
 Encerre com `Ctrl+C` no terminal. O servidor escuta apenas no próprio notebook
 e não altera os arquivos de produção nem acessa o Raspberry.

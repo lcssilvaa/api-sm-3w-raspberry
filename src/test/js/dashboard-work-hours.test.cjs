@@ -5,7 +5,7 @@ const data = require("../../main/resources/static/js/dashboard-data.js");
 const start = Date.parse("2026-09-18T23:00:00Z");
 const at = minute => start + minute * 60000;
 const sample = (minute, power, deviceId = "A", extra = {}) => ({
-  deviceId, dataHora: new Date(at(minute)).toISOString(), pt: power, ...extra
+  deviceId, dataHora: new Date(at(minute)).toISOString(), pa: power, ...extra
 });
 const defaults = { maxGapMinutes: 30 };
 function calculate(rows, options = {}) {
@@ -18,9 +18,9 @@ function expectHours(actual, expected) {
     Math.abs(actual[key] - (expected[key] || 0)) < 1e-9, `${key}: ${actual[key]} != ${expected[key] || 0}`);
 }
 
-test("integra intervalos reais: qualquer potência positiva é operação e zero é parado", () => {
-  const [result] = calculate([sample(0, 20), sample(10, 10), sample(30, 0), sample(60, 0)]);
-  expectHours(result.hours, { active: 1 / 2, off: 1 / 2 });
+test("integra intervalos reais: PA abaixo de 20 W é parado e a partir de 20 W é operação", () => {
+  const [result] = calculate([sample(0, "20"), sample(10, "19.99"), sample(30, 0), sample(60, 0)]);
+  expectHours(result.hours, { active: 1 / 6, off: 5 / 6 });
   assert.equal(Object.values(result.hours).reduce((a, b) => a + b), 1);
 });
 
@@ -42,19 +42,21 @@ test("zero é desligado; nulo, valor inválido e potência negativa deixam tempo
   expectHours(result.hours, { off: 1 / 3, unknown: 2 / 3 });
 });
 
-test("prioriza pt inclusive zero, soma as fases quando necessário e aceita tomada monofásica", () => {
-  const [total] = calculate([sample(0, 0, "A", { pa: 100 }), sample(30, 30), sample(60, 30)]);
+test("usa somente PA, independentemente do total, das outras fases ou do relé", () => {
+  const [total] = calculate([sample(0, 0, "A", { pt: 100 }), sample(30, 30, "A", { pt: 0 }), sample(60, 30)]);
   expectHours(total.hours, { off: 0.5, active: 0.5 });
-  const [phases] = calculate([0, 30, 60].map(minute => sample(minute, null, "A", { pa: "7", pb: 7, pc: 7 })));
-  expectHours(phases.hours, { active: 1 });
-  const [socket] = calculate([0, 30, 60].map(minute => sample(minute, null, "A", { pa: "25", rele: 0 })));
+  const [phases] = calculate([0, 30, 60].map(minute => sample(minute, "7", "A", { pb: 7, pc: 7 })));
+  expectHours(phases.hours, { off: 1 });
+  const [socket] = calculate([0, 30, 60].map(minute => sample(minute, "25", "A", { rele: 0 })));
   expectHours(socket.hours, { active: 1 });
 });
 
-test("não interpreta uma fase ausente de um trifásico como zero", () => {
-  const [result] = calculate([sample(0, null, "A", { pa: 10, pb: 10, pc: 10 }),
-    sample(30, null, "A", { pa: 0, pb: null, pc: 0 }), sample(60, null, "A", { pa: 0, pb: 0, pc: 0 })]);
-  expectHours(result.hours, { active: 0.5, unknown: 0.5 });
+test("PA ausente ou inválida fica sem dados mesmo com total e outras fases disponíveis", () => {
+  for (const pa of [undefined, null, "", "inválido", -1]) {
+    const [result] = calculate([sample(0, pa, "A", { pt: 100, pb: 50, pc: 50 }),
+      sample(30, 20, "A", { pb: null, pc: null }), sample(60, 20)]);
+    expectHours(result.hours, { active: 0.5, unknown: 0.5 });
+  }
 });
 
 test("calcula potências diferentes com a mesma regra e respeita a seleção de medidor", () => {
@@ -63,7 +65,7 @@ test("calcula potências diferentes com a mesma regra e respeita a seleção de 
   const result = calculate(rows, { meters });
   assert.equal(result.length, 2);
   expectHours(result[0].hours, { active: 1 });
-  expectHours(result[1].hours, { active: 1 });
+  expectHours(result[1].hours, { off: 1 });
   assert.deepEqual(calculate(rows, { meters, period: { meterId: "B" } }).map(item => item.deviceId), ["B"]);
 });
 
@@ -89,15 +91,15 @@ test("rejeita intervalo máximo de envio inválido", () => {
   }
 });
 
-test("ignora os antigos limites de uso e desligado: baixa potência também é operação", () => {
+test("ignora os antigos ajustes individuais e classifica PA abaixo de 20 W como parado", () => {
   const [result] = calculate([sample(0, 0), sample(10, 0.01), sample(30, 3), sample(60, 0)],
     { meters: [{ deviceId: "A", workHours: { activeWatts: 20, offWatts: 3, powerDivisor: 100 } }] });
-  expectHours(result.hours, { off: 1 / 6, active: 5 / 6 });
+  expectHours(result.hours, { off: 1 });
 });
 
 test("calcula 60 equipamentos juntos sem configuração individual", () => {
   const meters = Array.from({ length: 60 }, (_, index) => ({ deviceId: String(index) }));
-  const rows = meters.flatMap((meter, index) => [sample(0, index + 0.01, meter.deviceId),
+  const rows = meters.flatMap((meter, index) => [sample(0, index + 20, meter.deviceId),
     sample(30, 0, meter.deviceId), sample(60, 0, meter.deviceId)]);
   const result = calculate(rows, { meters });
   assert.equal(result.length, 60);

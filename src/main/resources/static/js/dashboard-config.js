@@ -3,7 +3,7 @@ const DASHBOARD_CONFIG = {
   // Intervalos maiores que este limite ficam sem dados; ajuste à cadência de envio.
   workHours: { maxGapMinutes: 5 },
   meters: [
-    { deviceId: 1, label: "Medidor CON", color: "#d90935" },
+    { deviceId: 1, label: "Compressor CON", color: "#d90935" },
     { deviceId: 2, label: "Medidor RIO", color: "#378baf" },
     { deviceId: 3, label: "Tomada RIO", color: "#898989" }
   ],

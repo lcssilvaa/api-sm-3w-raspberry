@@ -100,25 +100,19 @@ const DashboardData = (() => {
         .slice().sort((a, b) => a.timestamp - b.timestamp);
       // Uma leitura por instante: a última recebida prevalece, sem contar tempo duas vezes.
       const samples = [...new Map(ordered.map(row => [row.timestamp, row])).values()];
-      // Se houver fases no histórico, exija todas elas ao usar a soma. Uma fase
-      // ausente não pode reduzir artificialmente a potência de um trifásico.
-      const phases = ["pa", "pb", "pc"].filter(key => samples.some(row => numericValue(row[key]) !== null));
       const totals = { active: 0, off: 0, unknown: duration };
       for (let index = 0; index < samples.length - 1; index++) {
         const row = samples[index];
         const next = samples[index + 1];
         const elapsed = Math.min(next.timestamp, end) - Math.max(row.timestamp, period.from);
         if (elapsed <= 0 || next.timestamp - row.timestamp > maxGapMinutes * 60000) continue;
-        let power = numericValue(row.pt);
-        if (power === null && phases.length) {
-          const values = phases.map(key => numericValue(row[key]));
-          if (values.every(value => value !== null && value >= 0)) power = values.reduce((sum, value) => sum + value, 0);
-        }
+        // As horas em operação dependem somente da potência ativa da fase A, em W.
+        const power = numericValue(row.pa);
         // Potência negativa indica fluxo reverso ou instalação a verificar.
         // Não é evidência de equipamento desligado.
         if (power === null || power < 0) continue;
         if (!Number.isFinite(power)) continue;
-        const status = power === 0 ? "off" : "active";
+        const status = power < 20 ? "off" : "active";
         totals[status] += elapsed;
         totals.unknown -= elapsed;
       }
