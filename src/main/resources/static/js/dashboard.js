@@ -410,12 +410,29 @@
     $("areaHoras").setAttribute("aria-busy", "true");
     $("listaMedidores").setAttribute("aria-busy", "true");
     setStatus("Atualizando");
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
     try {
-      const response = await apiRequest(DASHBOARD_CONFIG.endpoint, { signal: controller.signal });
-      if (!response || !response.ok) throw new Error(`Falha na consulta (${response?.status || "sem resposta"}).`);
-      const result = DashboardData.normalizeRows(await response.json());
+      const payload = [];
+      let page = 0;
+      let totalPages = 1;
+      while (page < totalPages) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 20000);
+        try {
+          const url = `${DASHBOARD_CONFIG.endpoint}?page=${page}&size=2000`;
+          const response = await apiRequest(url, { signal: controller.signal });
+          if (!response || !response.ok) throw new Error(`Falha na consulta (${response?.status || "sem resposta"}).`);
+          const result = await response.json();
+          if (!Array.isArray(result?.content) || !Number.isFinite(result.totalPages)) {
+            throw new Error("Formato de resposta inválido.");
+          }
+          payload.push(...result.content);
+          totalPages = result.totalPages;
+          page++;
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
+      const result = DashboardData.normalizeRows(payload);
       state.rows = result.rows;
       state.loadedAt = Date.now();
       state.loaded = true;
@@ -441,7 +458,6 @@
       }
       console.error("Erro ao carregar medições:", error);
     } finally {
-      clearTimeout(timeout);
       state.loading = false;
       $("btnAtualizar").disabled = false;
       $("areaGrafico").setAttribute("aria-busy", "false");

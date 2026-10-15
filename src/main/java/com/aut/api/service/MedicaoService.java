@@ -3,6 +3,9 @@ package com.aut.api.service;
 import com.aut.api.DTO.MedicaoDTO;
 import com.aut.api.entity.MedicaoEntity;
 import com.aut.api.repository.MedicaoRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
@@ -19,6 +22,13 @@ public class MedicaoService {
 
     public List<MedicaoEntity> listarTodos() {
         return repository.findAll();
+    }
+
+    public Page<MedicaoEntity> listarPagina(int page, int size) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(Math.max(1, size), 2000);
+        return repository.findAll(PageRequest.of(safePage, safeSize,
+                Sort.by(Sort.Direction.ASC, "dataHora").and(Sort.by(Sort.Direction.ASC, "id"))));
     }
 
     public MedicaoEntity salvar(MedicaoDTO dto) {

@@ -1,5 +1,5 @@
 const DASHBOARD_CONFIG = {
-  endpoint: "/api/medicoes/listar",
+  endpoint: "/api/medicoes/listar/pagina",
   // Intervalos maiores que este limite ficam sem dados; ajuste à cadência de envio.
   workHours: { maxGapMinutes: 5 },
   meters: [
